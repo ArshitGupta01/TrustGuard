@@ -2,17 +2,35 @@
 # FastAPI + Heuristic-Based Analysis
 
 from __future__ import annotations
+import os
+import logging
+import traceback
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 import numpy as np
 from datetime import datetime
 import re
 import math
 from collections import Counter, defaultdict
 
+from db import db, insert_analysis, get_analysis_by_product, insert_label, get_labels, insert_audit
+from ml_model import train_from_labeled_reviews, predict_fake_probability
+from ollama_client import query_qwen
+
 app = FastAPI(title="TrustGuard API", version="2.0.0")
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("trustguard")
+
+ENABLE_ML = os.getenv("ENABLE_ML", "1") == "1"
+MODEL_TRAIN_THRESHOLD = int(os.getenv("MODEL_TRAIN_THRESHOLD", "30"))
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -745,19 +763,114 @@ async def analyze_product(data: ReviewInput):
             category=data.metadata.get('category', 'default')
         )
 
+        # Optional ML classifier prediction layer
+        ml_score = None
+        if ENABLE_ML:
+            labeled = await get_labels(limit=500)
+            if len(labeled) >= MODEL_TRAIN_THRESHOLD:
+                trained = train_from_labeled_reviews(labeled)
+                if trained:
+                    # average fake probability across reviews
+                    probs = [predict_fake_probability(r.get('text', '')) for r in data.reviews if r.get('text')]
+                    probs = [p for p in probs if p is not None]
+                    if probs:
+                        ml_score = float(round(float(sum(probs) / len(probs)), 3))
+                        result.flags.append(f"ML fake probability average: {ml_score}")
+
+        # ollama Qwen analysis (summarization + second opinion)
+        try:
+            summary_prompt = (
+                "Identify suspicious patterns in these reviews and provide a short 2-sentence assessment:\n" +
+                "\n".join([f"- [{r.get('rating', '?')}] {r.get('text','')[:120]}" for r in data.reviews[:10]])
+            )
+            qwen_text = query_qwen(summary_prompt, max_tokens=150, temperature=0.25)
+            if qwen_text:
+                result.flags.append("Qwen external summary available")
+                # attach as audit log
+                await insert_audit({
+                    "product_id": data.product_id,
+                    "source": "ollama_qwen",
+                    "recommendation": qwen_text,
+                    "heuristic_score": result.trust_score,
+                    "timestamp": datetime.utcnow().isoformat() + "Z"
+                })
+        except Exception as api_exc:
+            logger.warning("Unable to query Ollama Qwen: %s", api_exc)
+
+        # Persist each analysis for history when DB configured
+        try:
+            await insert_analysis({
+                "product_id": data.product_id,
+                "reviews": data.reviews,
+                "metadata": data.metadata,
+                "trust_score": result.trust_score,
+                "adjusted_rating": result.adjusted_rating,
+                "confidence": result.confidence,
+                "breakdown": result.breakdown,
+                "flags": result.flags,
+                "ml_fake_prob": ml_score,
+                "created_at": datetime.utcnow()
+            })
+        except Exception as db_exc:
+            logger.warning("Could not persist analysis: %s", db_exc)
+
         return result
 
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/history/{product_id}")
+async def get_history(product_id: str, limit: int = 20):
+    records = await get_analysis_by_product(product_id, limit=limit)
+    return {"product_id": product_id, "history": records}
+
+
+class LabelInput(BaseModel):
+    product_id: str
+    text: str
+    label: str  # e.g. fake/spam/trustworthy
+    user_id: Optional[str] = None
+
+
+@app.post("/label")
+async def label_review(label: LabelInput):
+    inserted = await insert_label(label.dict())
+    if not inserted:
+        raise HTTPException(status_code=503, detail="Label store unavailable")
+    return {"status": "ok", "id": inserted}
+
+
+@app.get("/labels")
+async def list_labels(limit: int = 100):
+    results = await get_labels(limit=limit)
+    return {"count": len(results), "labels": results}
+
+
+@app.post("/audit")
+async def create_audit(entry: Dict[str, Any]):
+    inserted = await insert_audit(entry)
+    if not inserted:
+        raise HTTPException(status_code=503, detail="Audit store unavailable")
+    return {"status": "ok", "id": inserted}
+
+
+@app.get("/audits")
+async def list_audits(limit: int = 100):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Audit store unavailable")
+    cursor = db.audit_logs.find().sort("created_at", -1).limit(limit)
+    records = [doc async for doc in cursor]
+    return {"count": len(records), "audits": records}
+
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "version": "2.0.0"}
+
 
 if __name__ == "__main__":
     import uvicorn
