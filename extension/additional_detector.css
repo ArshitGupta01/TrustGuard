@@ -1,0 +1,223 @@
+/*
+  TrustGuard Extra — Deep Space Verdict & Floating Popup v2.4
+  Injected alongside additional_detector.js
+*/
+
+/* ── Per-Review Badge ── */
+.tge-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font: 600 11px/1 'Outfit', -apple-system, sans-serif;
+    margin-left: 8px;
+    cursor: default;
+    position: relative;
+    vertical-align: middle;
+    background: #141724;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+    animation: tgeBadgeFadeIn 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+}
+.tge-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.6);
+}
+
+@keyframes tgeBadgeFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.tge-badge .tge-icon { display: inline-flex; align-items: center; }
+
+.tge-badge .tge-score-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 16px; border-radius: 8px;
+    font-size: 10px; font-weight: 800; margin-left: 2px; padding: 0 4px;
+    color: #ffffff;
+}
+
+/* Badge colors (Deep Space) */
+.tge-badge.tge-true { color: #00ff88; border-color: rgba(0,255,136,0.3); }
+.tge-badge.tge-true:hover { box-shadow: 0 8px 15px rgba(0,255,136,0.2), inset 0 1px 1px rgba(255,255,255,0.1); }
+.tge-badge.tge-true .tge-score-pill { background: rgba(0,255,136,0.2); border: 1px solid rgba(0,255,136,0.5); color: #00ff88; text-shadow: 0 0 10px #00ff88; }
+
+.tge-badge.tge-fake { color: #ff4757; border-color: rgba(255,71,87,0.3); }
+.tge-badge.tge-fake:hover { box-shadow: 0 8px 15px rgba(255,71,87,0.2), inset 0 1px 1px rgba(255,255,255,0.1); }
+.tge-badge.tge-fake .tge-score-pill { background: rgba(255,71,87,0.2); border: 1px solid rgba(255,71,87,0.5); color: #ff8a80; text-shadow: 0 0 10px #ff4757; }
+
+.tge-badge.tge-unsure { color: #ffaa00; border-color: rgba(255,170,0,0.3); }
+.tge-badge.tge-unsure:hover { box-shadow: 0 8px 15px rgba(255,170,0,0.2), inset 0 1px 1px rgba(255,255,255,0.1); }
+.tge-badge.tge-unsure .tge-score-pill { background: rgba(255,170,0,0.2); border: 1px solid rgba(255,170,0,0.5); color: #ffd54f; text-shadow: 0 0 10px #ffaa00; }
+
+/* ── Tooltip ── */
+.tge-tip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    background: #090a10; color: #d0d3e8; padding: 12px 14px; border-radius: 12px;
+    font: normal 11px/1.5 'Outfit', sans-serif; width: 220px; z-index: 99999;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05);
+    pointer-events: none; white-space: normal; animation: tgeTipIn 0.2s ease;
+}
+.tge-badge:hover .tge-tip { display: block; }
+.tge-tip::after {
+    content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+    border: 5px solid transparent; border-top-color: #090a10; z-index: 2;
+}
+.tge-tip::before {
+    content: ""; position: absolute; top: calc(100% + 1px); left: 50%; margin-left: -6px;
+    border: 6px solid transparent; border-top-color: rgba(255,255,255,0.05); z-index: 1;
+}
+.tge-tip strong { color: #ffffff; font-size: 12px; font-weight: 800; }
+.tge-tip-divider { display: block; height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; }
+
+@keyframes tgeTipIn { from { opacity: 0; transform: translateX(-50%) translateY(4px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* ── Floating Product Verdict Popup (Deep Space) ── */
+.tge-verdict {
+    position: fixed; top: 16px; right: 16px; z-index: 2147483647; width: 280px; padding: 16px;
+    border-radius: 12px; font-family: 'Outfit', sans-serif; color: #ffffff;
+    background: #141724; border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 16px 30px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05);
+    animation: tgeVerdictSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    -webkit-font-smoothing: antialiased;
+}
+
+@keyframes tgeVerdictFadeOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to   { opacity: 0; transform: translateX(40px) scale(0.95); pointer-events: none; }
+}
+
+@keyframes tgeVerdictSlideIn {
+    from { opacity: 0; transform: translateX(60px) scale(0.95); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* Close Button */
+.tge-close-btn {
+    position: absolute; top: 12px; right: 12px; background: transparent; border: none;
+    color: #a5a9c9; font-size: 14px; cursor: pointer; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center; border-radius: 8px;
+    transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background: #1a1e30; border: 1px solid rgba(255,255,255,0.02);
+}
+.tge-close-btn:hover { background: #262940; color: #ffffff; transform: scale(1.05); }
+
+/* Floating Circle Button */
+.tge-circle-btn {
+    position: fixed; top: 16px; right: 16px; z-index: 2147483647; width: 44px; height: 44px;
+    border-radius: 50%; background: #141724; border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    color: #00d2ff; transition: all 0.3s;
+}
+.tge-circle-btn:hover { background: #262940; color: #ffffff; transform: scale(1.1) rotate(5deg); box-shadow: 0 15px 30px rgba(0,210,255,0.2); }
+
+/* Verdict Header */
+.tge-verdict-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+    color: #a5a9c9; font-weight: 800;
+}
+.tge-verdict-icon { display: inline-flex; color: inherit; }
+
+/* Verdict Main */
+.tge-verdict-main { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.tge-verdict-emoji { font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.tge-verdict-text { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+
+/* Bar Track */
+.tge-verdict-bar-track {
+    height: 8px; border-radius: 4px; background: #262940; overflow: hidden; margin-bottom: 12px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+.tge-verdict-bar-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Percent label */
+.tge-verdict-percent { font-size: 13px; font-weight: 800; margin-bottom: 20px; color: #d0d3e8; }
+
+/* Breakdown */
+.tge-verdict-breakdown { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 16px; font-weight: 700; }
+.tge-vb-true { color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.3); }
+.tge-vb-fake { color: #ff4757; text-shadow: 0 0 10px rgba(255,71,87,0.3); }
+.tge-vb-unsure { color: #ffaa00; text-shadow: 0 0 10px rgba(255,170,0,0.3); }
+.tge-vb-total { color: #646882; font-weight: 600; }
+.tge-vb-dot { color: #262940; font-size: 10px; }
+
+/* Average score */
+.tge-verdict-avg { font-size: 12px; color: #a5a9c9; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05); font-weight: 600; }
+.tge-verdict-avg strong { color: #ffffff; font-size: 15px; font-weight: 900; }
+
+/* ── Verdict Color Variants ── */
+.tge-verdict-genuine { border-bottom: 2px solid #00ff88; box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 -10px 20px -10px rgba(0,255,136,0.2); }
+.tge-verdict-genuine .tge-verdict-text { color: #00ff88; }
+.tge-verdict-genuine .tge-verdict-bar-fill { background: linear-gradient(90deg, #00c853, #00ff88); box-shadow: 0 0 12px rgba(0,255,136,0.6); }
+
+.tge-verdict-mixed { border-bottom: 2px solid #ffaa00; box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 -10px 20px -10px rgba(255,170,0,0.2); }
+.tge-verdict-mixed .tge-verdict-text { color: #ffaa00; }
+.tge-verdict-mixed .tge-verdict-bar-fill { background: linear-gradient(90deg, #ff6d00, #ffaa00); box-shadow: 0 0 12px rgba(255,170,0,0.6); }
+
+.tge-verdict-suspicious { border-bottom: 2px solid #ff4757; box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 -10px 20px -10px rgba(255,71,87,0.2); }
+.tge-verdict-suspicious .tge-verdict-text { color: #ff4757; }
+.tge-verdict-suspicious .tge-verdict-bar-fill { background: linear-gradient(90deg, #ff1744, #ff4757); box-shadow: 0 0 12px rgba(255,71,87,0.6); }
+
+/* ── Integrated API Score Section ── */
+.tge-api-section { padding: 12px; border-radius: 10px; background: #090a10; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.03); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); }
+.tge-api-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tge-api-label { font-size: 10px; font-weight: 800; color: #a5a9c9; text-transform: uppercase; letter-spacing: 1px; }
+.tge-api-score { font-size: 24px; font-weight: 900; letter-spacing: -1px; }
+.tge-api-max { font-size: 14px; font-weight: 700; color: #646882; }
+.tge-api-bar-track { height: 6px; border-radius: 3px; background: #262940; overflow: hidden; margin-bottom: 12px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+.tge-api-bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.tge-api-flags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tge-api-flag { font-size: 10px; padding: 4px 8px; border-radius: 6px; background: #1a0f14; border: 1px solid rgba(255,71,87,0.3); color: #ff8a80; font-weight: 700; box-shadow: 0 2px 6px rgba(255,71,87,0.1); }
+
+/* API score color variants */
+.tge-api-excellent .tge-api-score { color: #00d2ff; text-shadow: 0 0 16px rgba(0,210,255,0.4); }
+.tge-api-excellent .tge-api-bar-fill { background: linear-gradient(90deg, #00b4d8, #00d2ff); box-shadow: 0 0 12px rgba(0,210,255,0.5); }
+.tge-api-good .tge-api-score { color: #00ff88; text-shadow: 0 0 16px rgba(0,255,136,0.4); }
+.tge-api-good .tge-api-bar-fill { background: linear-gradient(90deg, #00c853, #00ff88); box-shadow: 0 0 12px rgba(0,255,136,0.5); }
+.tge-api-caution .tge-api-score { color: #ffaa00; text-shadow: 0 0 16px rgba(255,170,0,0.4); }
+.tge-api-caution .tge-api-bar-fill { background: linear-gradient(90deg, #ff6d00, #ffaa00); box-shadow: 0 0 12px rgba(255,170,0,0.5); }
+.tge-api-danger .tge-api-score { color: #ff4757; text-shadow: 0 0 16px rgba(255,71,87,0.4); }
+.tge-api-danger .tge-api-bar-fill { background: linear-gradient(90deg, #ff1744, #ff4757); box-shadow: 0 0 12px rgba(255,71,87,0.5); }
+
+/* ── Qwen AI Summary Section ── */
+.tge-qwen-section {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(0, 210, 255, 0.05);
+    border: 1px solid rgba(0, 210, 255, 0.1);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.tge-qwen-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.tge-qwen-icon {
+    font-size: 16px;
+}
+
+.tge-qwen-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #00d2ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.tge-qwen-body {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #d0d3e8;
+    font-style: italic;
+}
+
+/* ── Footer CTA ── */
+.tge-verdict-footer { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 11px; text-align: center; color: #646882; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }

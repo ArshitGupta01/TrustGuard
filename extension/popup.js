@@ -1,4 +1,4 @@
-// TrustGuard Popup Logic
+// TrustGuard Popup Logic — v2.0
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('TrustGuard Popup: Loaded');
@@ -22,27 +22,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         await chrome.storage.local.set({ showOnPage: e.target.checked });
     });
 
+    // Check backend health
+    checkBackendHealth();
+
     // Analyze button
-    document.getElementById('analyzeBtn').addEventListener('click', async () => {
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    analyzeBtn.addEventListener('click', async () => {
         const statusDiv = document.getElementById('analysisStatus');
-        const qwenDiv = document.getElementById('qwenSummary');
-        qwenDiv.textContent = '';
-
-        let seconds = 0;
-        statusDiv.textContent = `Analyzing... Qwen summary pending (${seconds}s)`;
-        statusDiv.style.color = "#fff";
-
-        const timer = setInterval(() => {
-            seconds += 1;
-            statusDiv.textContent = `Analyzing... Qwen summary pending (${seconds}s)`;
-        }, 1000);
+        statusDiv.textContent = "Analyzing...";
+        statusDiv.style.color = "rgba(255,255,255,0.7)";
+        analyzeBtn.classList.add('loading');
+        analyzeBtn.textContent = 'Analyzing...';
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
             if (!tab) {
-                statusDiv.textContent = "Error: No active tab";
+                statusDiv.textContent = "⚠ No active tab";
                 statusDiv.style.color = "#ff4757";
+                analyzeBtn.classList.remove('loading');
+                analyzeBtn.textContent = '🔍 Analyze This Page';
                 return;
             }
 
@@ -55,33 +54,59 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Response received:', response);
 
             if (response && response.success) {
-                clearInterval(timer);
-                statusDiv.textContent = "✓ Analysis complete!";
+                statusDiv.textContent = `✓ Found ${response.reviewCount} reviews — analysis complete!`;
                 statusDiv.style.color = "#00ff88";
-
-                const qwenText = response.qwen_summary;
-                if (qwenText) {
-                    qwenDiv.innerHTML = `<strong>Qwen Summary:</strong><br>${qwenText}`;
-                } else {
-                    qwenDiv.innerHTML = `<strong>Qwen Summary:</strong><br>Not available yet.`;
-                }
 
                 // Refresh stats
                 const newStats = await chrome.storage.local.get(['analyzedCount', 'flaggedCount']);
                 document.getElementById('analyzedCount').textContent = newStats.analyzedCount || 0;
                 document.getElementById('flaggedCount').textContent = newStats.flaggedCount || 0;
             } else {
-                clearInterval(timer);
                 statusDiv.textContent = `✗ ${response?.error || 'Analysis failed'}`;
                 statusDiv.style.color = "#ff4757";
             }
         } catch (error) {
-            clearInterval(timer);
             console.error('Error:', error);
-            statusDiv.textContent = `Error: ${error.message}. Try refreshing the page.`;
+            statusDiv.textContent = `Error: ${error.message}. Refresh the page.`;
             statusDiv.style.color = "#ff4757";
+        } finally {
+            analyzeBtn.classList.remove('loading');
+            analyzeBtn.textContent = '🔍 Analyze This Page';
         }
     });
-
-
 });
+
+async function checkBackendHealth() {
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const aiBadge = document.getElementById('aiBadge');
+    const aiStatusText = document.getElementById('aiStatusText');
+
+    try {
+        const response = await fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(3000) });
+        if (response.ok) {
+            const data = await response.json();
+            statusDot.classList.remove('offline');
+            statusText.textContent = 'Backend connected';
+
+            if (data.model_loaded) {
+                aiStatusText.textContent = 'AI Model Active';
+                aiBadge.style.borderColor = 'rgba(0,255,136,0.3)';
+                aiBadge.style.background = 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,217,255,0.1))';
+                aiBadge.querySelector('.ai-dot').style.background = '#00ff88';
+            } else {
+                aiStatusText.textContent = 'Heuristic Mode';
+                aiBadge.style.borderColor = 'rgba(255,170,0,0.3)';
+                aiBadge.querySelector('.ai-dot').style.background = '#ffa502';
+            }
+        } else {
+            throw new Error('Not OK');
+        }
+    } catch (e) {
+        statusDot.classList.add('offline');
+        statusText.textContent = 'Backend offline';
+        aiStatusText.textContent = 'Backend unavailable';
+        aiBadge.style.borderColor = 'rgba(255,71,87,0.2)';
+        aiBadge.querySelector('.ai-dot').style.background = '#ff4757';
+    }
+}

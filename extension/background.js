@@ -37,6 +37,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Keep channel open for async
     }
 
+    if (request.action === 'evaluate_reviews_ai') {
+        fetch('http://localhost:8000/analyze_reviews_batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ reviews: request.data })
+        })
+        .then(response => response.json())
+        .then(data => sendResponse({ success: true, data: data }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+        return true;
+    }
+
     if (request.action === 'getCache') {
         chrome.storage.local.get(request.key).then(data => {
             sendResponse(data);

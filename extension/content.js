@@ -1,4 +1,4 @@
-// TrustGuard Content Script - DOM Scraper ONLY
+// TrustGuard Content Script - DOM Scraper & UI Injection v2.0
 // CRITICAL: No direct fetch() calls here - all API calls go through background script
 
 (function () {
@@ -45,7 +45,7 @@
             verifiedPurchase: [
                 '[data-hook="avp-badge"]',
                 '.a-declarative[data-action="reviews:filter-action:verified-purchase"]',
-                '.a-icon-mini-star-filled', // Sometimes used in compact views
+                '.a-icon-mini-star-filled',
                 'span[data-hook="avp-badge-linkless"]',
                 '.avp-badge'
             ],
@@ -71,36 +71,14 @@
             asinFromData: '[data-asin]'
         },
         flipkart: {
-            reviewContainer: ['._27M-vq', '.col-12-12._1c0LF1', '._1AtVbE', '._2wzgFH', 'div[class*="css-175oi2r"][style*="border-bottom"]', 'div[class*="css-146c3p1"]'],
-            reviewText: ['.t-ZTKy div div', '._12cXul', '._2-N8zT', 'div[class*="css-146c3p1"]', '.ZBlf_N'],
-            rating: ['._3LWZlK', 'div[class*="3LWZlK"]', 'div[class*="css-146c3p1"]'],
-            reviewerName: ['._2sc7ZR', 'div[class*="css-146c3p1"]'],
-            verifiedPurchase: ['._2V5EHH', '._2mcZGG', 'div[class*="css-g5y9jx"]'],
-            reviewDate: ['._2sc7ZR._2V5EHH', '._3n8db9', 'div[class*="css-146c3p1"]'],
-            productTitle: ['.B_NuCI', '.product-title', 'h1[class*="css-146c3p1"]'],
+            reviewContainer: ['._27M-vq', '.col-12-12._1c0LF1', '._1AtVbE', '._2wzgFH'],
+            reviewText: ['.t-ZTKy div div', '._12cXul', '._2-N8zT'],
+            rating: ['._3LWZlK', 'div[class*="3LWZlK"]'],
+            reviewerName: ['._2sc7ZR'],
+            verifiedPurchase: ['._2V5EHH', '._2mcZGG'],
+            reviewDate: ['._2sc7ZR._2V5EHH', '._3n8db9'],
+            productTitle: ['.B_NuCI', '.product-title'],
             asinFromUrl: /[?&]pid=([A-Za-z0-9_-]+)/i
-        },
-        playstore: {
-            reviewContainer: ['.RHo1pe'],
-            reviewText: ['.h3bYgc'],
-            rating: ['.iPNoBe div[aria-label]'],
-            reviewerName: ['.X5079c'],
-            verifiedPurchase: [], // Playstore doesn't have an AVP badge like Amazon
-            reviewDate: ['.bp9SZb'],
-            helpfulVotes: ['.R0iScd'],
-            productTitle: ['h1.Fd93ec', '.VfPpkd-GlS6sc-PR7oYc'],
-            asinFromUrl: /[?&]id=([a-zA-Z0-9._]+)/i
-        },
-        myntra: {
-            reviewContainer: ['.user-review-main'],
-            reviewText: ['.user-review-reviewText'],
-            rating: ['.user-review-rating'],
-            reviewerName: ['.user-review-userName'],
-            verifiedPurchase: [],
-            reviewDate: ['.user-review-date'],
-            helpfulVotes: ['.user-review-usefulCount'],
-            productTitle: ['.pdp-title', '.pdp-name'],
-            asinFromUrl: /\/(\d+)\/buy/i
         }
     };
 
@@ -108,9 +86,24 @@
         const host = window.location.hostname;
         if (host.includes('amazon')) return 'amazon';
         if (host.includes('flipkart')) return 'flipkart';
-        if (host.includes('play.google.com')) return 'playstore';
-        if (host.includes('myntra.com')) return 'myntra';
         return null;
+    }
+
+    function isProductPage() {
+        const url = window.location.href;
+        const path = window.location.pathname;
+        const platform = getPlatform();
+        if (!platform) return false;
+
+        if (platform === 'amazon') {
+            // Amazon product pages have /dp/ or /gp/product/ in the URL
+            return /\/dp\/[A-Z0-9]{10}/i.test(url) || /\/gp\/product\//i.test(url);
+        }
+        if (platform === 'flipkart') {
+            // Flipkart product pages have /p/ in the path
+            return /\/p\//i.test(path) || /\/itm\//i.test(path);
+        }
+        return false;
     }
 
     function extractASIN() {
@@ -120,7 +113,6 @@
         try {
             const s = SELECTORS[platform];
 
-            // Try URL regex patterns (now supports array of patterns)
             if (s.asinFromUrl) {
                 const patterns = Array.isArray(s.asinFromUrl) ? s.asinFromUrl : [s.asinFromUrl];
                 for (const pattern of patterns) {
@@ -132,7 +124,6 @@
                 }
             }
 
-            // Try data-asin attribute (Amazon specific)
             if (s.asinFromData) {
                 const asinEl = document.querySelector(s.asinFromData);
                 if (asinEl) {
@@ -144,11 +135,9 @@
                 }
             }
 
-            // Try query params for Flipkart
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.has('pid')) return urlParams.get('pid');
 
-            // Try meta tags
             if (s.asinFromMeta) {
                 const meta = document.querySelector(s.asinFromMeta);
                 if (meta) {
@@ -177,16 +166,8 @@
         return Math.abs(hash).toString(16).padStart(16, '0');
     }
 
-    function parseRating(el, platform) {
-        if (!el) return 3;
-        const text = el.innerText || '';
-        
-        if (platform === 'playstore') {
-            const ariaLabel = el.getAttribute('aria-label') || '';
-            const match = ariaLabel.match(/(\d+)/);
-            return match ? parseFloat(match[1]) : 3;
-        }
-
+    function parseRating(text) {
+        if (!text) return 3;
         const match = text.match(/(\d+(\.\d+)?)/);
         return match ? parseFloat(match[1]) : 3;
     }
@@ -194,7 +175,6 @@
     function parseDate(dateText) {
         if (!dateText) return new Date().toISOString();
         try {
-            // Handle various date formats
             const date = new Date(dateText);
             if (isNaN(date.getTime())) {
                 return new Date().toISOString();
@@ -229,7 +209,6 @@
         const reviews = [];
         let containers = [];
 
-        // Try multiple container selectors
         const containerSelectors = Array.isArray(s.reviewContainer)
             ? s.reviewContainer
             : [s.reviewContainer];
@@ -247,7 +226,6 @@
             }
         }
 
-        // Fallback: Try to find reviews by text content patterns
         if (containers.length === 0) {
             console.log("TrustGuard: Trying fallback review detection...");
             const allDivs = document.querySelectorAll('div, article');
@@ -273,39 +251,11 @@
                 const helpfulEl = getElement(container, s.helpfulVotes);
 
                 const text = textEl ? textEl.innerText.trim() : '';
-                
-                // If text is not found by selector, try finding the largest text block in container
-                let finalText = text;
-                if (!finalText || finalText.length < 10) {
-                    const candidateDivs = Array.from(container.querySelectorAll('div, p, span'));
-                    candidateDivs.sort((a, b) => (b.innerText?.length || 0) - (a.innerText?.length || 0));
-                    for (const div of candidateDivs) {
-                        const content = div.innerText?.trim();
-                        if (content && content.length > 20 && !content.includes('\n')) {
-                            finalText = content;
-                            break;
-                        }
-                    }
-                }
-
-                if (!finalText || finalText.length < 10) return; // Skip empty/short reviews
-
-                // Smarter rating extraction for dynamic layouts
-                let finalRating = parseRating(ratingEl, platform);
-                if (!ratingEl && platform === 'flipkart') {
-                    const ratingMatch = container.innerText.match(/([1-5])\s*(★|out of 5)/);
-                    if (ratingMatch) finalRating = parseFloat(ratingMatch[1]);
-                    else {
-                        // Look for a div that solely contains a digit 1-5
-                        const smallDivs = Array.from(container.querySelectorAll('div'));
-                        const digitDiv = smallDivs.find(d => /^[1-5](\.0)?$/.test(d.innerText.trim()));
-                        if (digitDiv) finalRating = parseFloat(digitDiv.innerText.trim());
-                    }
-                }
+                if (!text || text.length < 10) return;
 
                 reviews.push({
-                    text: finalText,
-                    rating: finalRating,
+                    text: text,
+                    rating: parseRating(ratingEl ? ratingEl.innerText : ''),
                     verified: !!verifiedEl || (container.innerText.includes("Verified Purchase")),
                     timestamp: parseDate(dateEl ? dateEl.innerText : ''),
                     reviewer_id: hashString(nameEl ? nameEl.innerText : `unknown_${index}`),
@@ -321,38 +271,19 @@
         return reviews;
     }
 
-    function createTrustBadge(score, flags) {
-        const badge = document.createElement('div');
-        badge.id = 'trustguard-badge';
-        badge.className = `trustguard-badge ${getScoreClass(score)}`;
+    // ── SVG Score Ring Helper ──
+    function createScoreRing(score, size, strokeWidth) {
+        const radius = (size - strokeWidth) / 2;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (score / 100) * circumference;
 
-        const displayFlags = (flags || []).filter(f => f !== 'Qwen external summary available');
-        const flagList = displayFlags.map(f => `<li>${escapeHtml(f)}</li>`).join('');
-
-        badge.innerHTML = `
-      <div class="tg-header">
-        <span class="tg-icon">🛡️</span>
-        <span class="tg-title">TrustGuard</span>
-        <span class="tg-score">${Math.round(score)}/100</span>
-      </div>
-      <div class="tg-details">
-        <div class="tg-rating-bar">
-          <div class="tg-rating-fill" style="width: ${score}%"></div>
-        </div>
-        ${displayFlags.length > 0 ? `<ul class="tg-flags">${flagList}</ul>` : ''}
-        <div class="tg-footer">Click for details</div>
-      </div>
-    `;
-
-        badge.addEventListener('click', showDetailedAnalysis);
-        return badge;
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return `
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+                <circle class="tg-ring-bg" cx="${size/2}" cy="${size/2}" r="${radius}"/>
+                <circle class="tg-ring-fill" cx="${size/2}" cy="${size/2}" r="${radius}"
+                    stroke-dasharray="${circumference}"
+                    stroke-dashoffset="${offset}"/>
+            </svg>`;
     }
 
     function getScoreClass(score) {
@@ -362,16 +293,59 @@
         return 'tg-danger';
     }
 
+    function getScoreVerdict(score) {
+        if (score >= 80) return 'Excellent Trust Score';
+        if (score >= 60) return 'Good — Mostly Trustworthy';
+        if (score >= 40) return 'Caution — Mixed Signals';
+        return 'Warning — Potentially Manipulated';
+    }
+
+    function createTrustBadge(score, flags, mlEnhanced, originalRating, adjustedRating) {
+        const badge = document.createElement('div');
+        badge.id = 'trustguard-badge';
+        badge.className = `trustguard-badge ${getScoreClass(score)}`;
+
+        const flagsHtml = flags.slice(0, 3).map(f =>
+            `<span class="tg-badge-flag">⚠ ${f}</span>`
+        ).join('');
+
+        const aiChip = mlEnhanced
+            ? '<span class="tg-ai-chip">AI</span>'
+            : '';
+
+        badge.innerHTML = `
+            <div class="tg-badge-inner">
+                <div class="tg-ring-wrap">
+                    ${createScoreRing(score, 64, 5)}
+                    <span class="tg-ring-score">${adjustedRating ? adjustedRating : Math.round(score)}<span style="font-size:10px; opacity:0.7">/5</span></span>
+                </div>
+                <div class="tg-badge-info">
+                    <div class="tg-badge-label">
+                        🛡️ TrustGuard ${aiChip}
+                    </div>
+                    ${originalRating ? `
+                    <div class="tg-badge-ratings" style="margin-bottom: 5px; font-size: 13px; color: #a1a1aa;">
+                        Actual: <span style="color: #ffffff; font-weight: bold; margin-right: 8px;">⭐ ${originalRating}</span>
+                        Adjusted: <span style="color: #00ff88; font-weight: bold;">⭐ ${adjustedRating}</span>
+                    </div>` : ''}
+                    <div class="tg-badge-verdict">${getScoreVerdict(score)}</div>
+                    ${flags.length > 0 ? `<div class="tg-badge-flags">${flagsHtml}</div>` : ''}
+                    <div class="tg-badge-cta">Click for detailed analysis →</div>
+                </div>
+            </div>
+        `;
+
+        badge.addEventListener('click', showDetailedAnalysis);
+        return badge;
+    }
+
     function injectBadge(data) {
-        // Remove existing badge
         const existing = document.getElementById('trustguard-badge');
         if (existing) existing.remove();
 
-        // Find injection point
         let target = document.querySelector('#titleBlock, #title_feature_div, .B_NuCI, [data-hook="product-title"]');
 
         if (!target) {
-            // Fallback: Try to find title area
             const titleSelectors = ['h1', '.product-title', '#productTitle', '[data-hook="product-title"]'];
             for (const sel of titleSelectors) {
                 target = document.querySelector(sel);
@@ -384,44 +358,33 @@
             return;
         }
 
-        const badge = createTrustBadge(data.trust_score, data.flags);
+        const mlEnhanced = data.breakdown?.ml_enhanced || false;
+        const adjustedRating = data.adjusted_rating ? data.adjusted_rating.toFixed(1) : null;
+        const originalRating = data.original_rating ? parseFloat(data.original_rating).toFixed(1) : null;
+
+        const badge = createTrustBadge(data.trust_score, data.flags || [], mlEnhanced, originalRating, adjustedRating);
         
-        // Insert after target
+        // Expose adjusted rating and qwen summary to additional_detector.js
+        if (adjustedRating) {
+            badge.dataset.adjustedRating = adjustedRating;
+        }
+        if (data.qwen_summary) {
+            badge.dataset.qwenSummary = data.qwen_summary;
+        }
+
         if (target.parentNode) {
             target.parentNode.insertBefore(badge, target.nextSibling);
             console.log('TrustGuard: Badge injected successfully');
-            
-            // New: Inject Qwen summary if available
-            if (data.qwen_summary) {
-                injectQwenSummary(badge, data.qwen_summary);
-            }
         }
     }
 
-    function injectQwenSummary(anchor, text) {
-        // Remove existing summary
-        const existing = document.getElementById('trustguard-qwen-summary');
-        if (existing) existing.remove();
-
-        const summaryBox = document.createElement('div');
-        summaryBox.id = 'trustguard-qwen-summary';
-        summaryBox.className = 'tg-qwen-summary-box';
-        summaryBox.innerHTML = `
-            <div class="tg-qwen-header">
-                <span class="tg-qwen-icon">🤖</span>
-                <span class="tg-qwen-title">Qwen AI Analysis</span>
-            </div>
-            <div class="tg-qwen-body">
-                ${escapeHtml(text)}
-            </div>
-        `;
-
-        // Insert after the main badge
-        if (anchor.parentNode) {
-            anchor.parentNode.insertBefore(summaryBox, anchor.nextSibling);
-            console.log('TrustGuard: Qwen summary injected');
-        }
-    }
+    // ── Metric icons & bar classes ──
+    const METRIC_CONFIG = {
+        content_quality:     { icon: '📝', bar: 'tg-bar-content',  label: 'Content Quality' },
+        review_patterns:     { icon: '🔗', bar: 'tg-bar-patterns', label: 'Review Patterns' },
+        temporal_integrity:  { icon: '⏱️', bar: 'tg-bar-temporal', label: 'Temporal Integrity' },
+        metadata_signals:    { icon: '📊', bar: 'tg-bar-metadata', label: 'Metadata Signals' },
+    };
 
     function showDetailedAnalysis() {
         if (!trustScoreData) {
@@ -429,60 +392,101 @@
             return;
         }
 
-        // Remove existing modal
         const existingModal = document.getElementById('trustguard-modal');
         if (existingModal) existingModal.remove();
+
+        const score = trustScoreData.trust_score;
+        const scoreClass = getScoreClass(score);
+        const mlActive = trustScoreData.breakdown?.ml_enhanced || false;
+
+        // Build score ring for modal (larger)
+        const radius = 63;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (score / 100) * circumference;
+
+        // Build metric rows
+        const metricHtml = Object.entries(trustScoreData.breakdown || {})
+            .filter(([k]) => k !== 'weights_used' && k !== 'ml_enhanced')
+            .map(([key, value]) => {
+                const config = METRIC_CONFIG[key] || { icon: '📈', bar: 'tg-bar-content', label: key.replace(/_/g, ' ') };
+                const clamped = Math.max(0, Math.min(100, value));
+                return `
+                    <div class="tg-metric">
+                        <div class="tg-metric-icon">${config.icon}</div>
+                        <div class="tg-metric-info">
+                            <div class="tg-metric-name">${config.label}</div>
+                            <div class="tg-metric-bar">
+                                <div class="${config.bar}" style="width: ${clamped}%"></div>
+                            </div>
+                        </div>
+                        <div class="tg-metric-value">${Math.round(value)}</div>
+                    </div>
+                `;
+            }).join('');
+
+        // Build flags
+        const flagsHtml = trustScoreData.flags && trustScoreData.flags.length > 0
+            ? `<div class="tg-flags-section">
+                <div class="tg-section-header">⚠️ Warnings</div>
+                ${trustScoreData.flags.map(f => `
+                    <div class="tg-flag-item">
+                        <span class="tg-flag-dot"></span>
+                        <span>${f}</span>
+                    </div>
+                `).join('')}
+               </div>`
+            : '';
+
+        // Score color
+        let strokeColor;
+        if (score >= 80) strokeColor = '#00d9ff';
+        else if (score >= 60) strokeColor = '#69f0ae';
+        else if (score >= 40) strokeColor = '#ffd54f';
+        else strokeColor = '#ff8a80';
 
         const modal = document.createElement('div');
         modal.id = 'trustguard-modal';
         modal.innerHTML = `
-      <div class="tg-modal-overlay">
-        <div class="tg-modal-content">
-          <button class="tg-close">&times;</button>
-          <h2>🛡️ TrustGuard Analysis</h2>
-          <div class="tg-score-circle ${getScoreClass(trustScoreData.trust_score)}">
-            <span class="tg-big-score">${Math.round(trustScoreData.trust_score)}</span>
-            <span class="tg-label">Trust Score</span>
-          </div>
-          <div class="tg-breakdown">
-            <h3>Score Breakdown</h3>
-            ${Object.entries(trustScoreData.breakdown || {})
-                .filter(([k]) => k !== 'weights_used')
-                .map(([key, value]) => `
-                <div class="tg-metric">
-                  <span class="tg-metric-name">${key.replace(/_/g, ' ')}</span>
-                  <div class="tg-metric-bar">
-                    <div style="width: ${Math.max(0, Math.min(100, value))}%"></div>
-                  </div>
-                  <span class="tg-metric-value">${Math.round(value)}</span>
+            <div class="tg-modal-overlay">
+                <div class="tg-modal-content">
+                    <div class="tg-modal-header">
+                        <button class="tg-close">&times;</button>
+                        <div class="tg-modal-title">
+                            🛡️ TrustGuard Analysis
+                            ${mlActive ? '<span class="tg-ai-tag">AI Enhanced</span>' : ''}
+                        </div>
+                        <div class="tg-score-ring-wrap">
+                            <svg width="150" height="150" viewBox="0 0 150 150">
+                                <circle class="tg-score-ring-bg" cx="75" cy="75" r="${radius}"/>
+                                <circle class="tg-score-ring-progress" cx="75" cy="75" r="${radius}"
+                                    stroke="${strokeColor}"
+                                    stroke-dasharray="${circumference}"
+                                    stroke-dashoffset="${offset}"
+                                    style="filter: drop-shadow(0 0 6px ${strokeColor}80)"/>
+                            </svg>
+                            <div class="tg-score-ring-text">
+                                <span class="tg-score-ring-value" style="color:${strokeColor}">${Math.round(score)}</span>
+                                <span class="tg-score-ring-label">Trust Score</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tg-modal-body">
+                        <div class="tg-section-header">📊 Score Breakdown</div>
+                        ${metricHtml}
+                        ${flagsHtml}
+                        <div class="tg-adjusted-rating">
+                            <div class="tg-section-header">⭐ Adjusted Rating</div>
+                            <div>
+                                <span class="tg-adjusted-rating-value">${trustScoreData.adjusted_rating}</span>
+                                <span class="tg-adjusted-rating-max">/5</span>
+                            </div>
+                            <div class="tg-confidence">Confidence: ${Math.round((trustScoreData.confidence || 0) * 100)}%</div>
+                        </div>
+                    </div>
                 </div>
-              `).join('')}
-          </div>
-          ${trustScoreData.flags && trustScoreData.flags.length > 0 ? `
-            <div class="tg-flags-section">
-              <h3>⚠️ Warnings</h3>
-              <ul>${trustScoreData.flags
-                  .filter(f => f !== 'Qwen external summary available')
-                  .map(f => `<li>${escapeHtml(f)}</li>`)
-                  .join('')}</ul>
             </div>
-          ` : ''}
-          ${trustScoreData.qwen_summary ? `
-            <div class="tg-qwen-summary">
-              <h3>Qwen Summary</h3>
-              <p>${escapeHtml(trustScoreData.qwen_summary)}</p>
-            </div>
-          ` : ''}
-          <div class="tg-adjusted-rating">
-            <h3>Adjusted Rating</h3>
-            <p>Based on authentic reviews: <strong>${trustScoreData.adjusted_rating}/5</strong></p>
-            <p class="tg-confidence">Confidence: ${Math.round((trustScoreData.confidence || 0) * 100)}%</p>
-          </div>
-        </div>
-      </div>
-    `;
+        `;
 
-        // Close handlers
         const closeBtn = modal.querySelector('.tg-close');
         const overlay = modal.querySelector('.tg-modal-overlay');
 
@@ -497,6 +501,11 @@
     async function analyzeProduct() {
         if (analysisInProgress) {
             console.log('TrustGuard: Analysis already in progress');
+            return;
+        }
+
+        if (!isProductPage()) {
+            console.log('TrustGuard: Not a product page, skipping analysis');
             return;
         }
 
@@ -517,13 +526,12 @@
         console.log(`TrustGuard: Starting analysis for ASIN: ${asin}`);
 
         try {
-            // Check local cache first
             const cacheKey = `tg_${asin}`;
             const cached = await chrome.storage.local.get(cacheKey);
 
             if (cached[cacheKey]) {
                 const age = Date.now() - cached[cacheKey].timestamp;
-                const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+                const CACHE_DURATION = 30 * 60 * 1000;
 
                 if (age < CACHE_DURATION) {
                     console.log('TrustGuard: Using cached data');
@@ -534,17 +542,8 @@
                 }
             }
 
-            // Scroll to load more reviews if needed (but don't wait too long)
-            if (reviews.length < 20) {
-                console.log('TrustGuard: Few reviews found, attempting to scroll...');
-                await scrollForReviews();
-                // Re-extract reviews after scrolling
-                const moreReviews = extractReviews();
-                if (moreReviews.length > reviews.length) {
-                    console.log(`TrustGuard: Scrolled and found ${moreReviews.length} reviews`);
-                    reviews.splice(0, reviews.length, ...moreReviews);
-                }
-            }
+            const reviews = extractReviews();
+            console.log(`TrustGuard: Extracted ${reviews.length} reviews`);
 
             if (reviews.length === 0) {
                 console.warn('TrustGuard: No reviews found on page');
@@ -553,7 +552,6 @@
                 return;
             }
 
-            // Prepare data
             const platform = getPlatform();
             const titleEl = document.querySelector(SELECTORS[platform].productTitle);
             const category = inferCategory(titleEl ? titleEl.innerText : '');
@@ -571,7 +569,6 @@
 
             console.log('TrustGuard: Sending analysis request to background script');
 
-            // Send message to background script for API call
             const response = await chrome.runtime.sendMessage({
                 action: 'analyze',
                 data: requestData
@@ -585,7 +582,10 @@
 
             trustScoreData = response.data;
 
-            // Cache result
+            // Compute raw average locally from the scraped reviews and save it inside the cached data
+            const rawAvg = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "3.0";
+            trustScoreData.original_rating = rawAvg;
+
             await chrome.storage.local.set({
                 [cacheKey]: {
                     data: trustScoreData,
@@ -593,7 +593,6 @@
                 }
             });
 
-            // Update stats
             chrome.runtime.sendMessage({
                 action: 'updateStats',
                 data: {
@@ -620,7 +619,7 @@
     }
 
     function showNoReviewsMessage() {
-        const badge = createTrustBadge(50, ['No reviews found on this page']);
+        const badge = createTrustBadge(50, ['No reviews found on this page'], false);
         let target = document.querySelector('#titleBlock, #title_feature_div, .B_NuCI, h1');
         if (target && target.parentNode) {
             target.parentNode.insertBefore(badge, target.nextSibling);
@@ -631,9 +630,8 @@
         if (!title) return 'default';
         const t = title.toLowerCase();
         if (t.includes('book') || t.includes('novel') || t.includes('kindle')) return 'books';
-        if (t.includes('phone') || t.includes('laptop') || t.includes('electronic') || t.includes('computer') || t.includes('camera')) return 'electronics';
+        if (t.includes('phone') || t.includes('laptop') || t.includes('electronic') || t.includes('computer')) return 'electronics';
         if (t.includes('shoe') || t.includes('cloth') || t.includes('fashion') || t.includes('wear')) return 'fashion';
-        if (t.includes('app') || t.includes('game') || t.includes('software') || t.includes('messenger') || t.includes('tool')) return 'software';
         return 'default';
     }
 
@@ -641,8 +639,6 @@
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (request.action === 'trigger_analysis') {
             console.log("TrustGuard: Manual analysis triggered from popup");
-
-            // Reset current ASIN to force re-analysis
             currentASIN = null;
 
             analyzeProduct().then(() => {
@@ -650,8 +646,7 @@
                 sendResponse({
                     success: true,
                     reviewCount: reviews.length,
-                    asin: currentASIN,
-                    qwen_summary: trustScoreData?.qwen_summary || null
+                    asin: currentASIN
                 });
             }).catch(error => {
                 sendResponse({
@@ -660,7 +655,7 @@
                 });
             });
 
-            return true; // Keep channel open
+            return true;
         }
 
         if (request.action === 'getStatus') {
@@ -679,15 +674,13 @@
 
         console.log('TrustGuard: Initializing observers');
 
-        // Watch for review section loading
         const observer = new MutationObserver((mutations) => {
             let shouldAnalyze = false;
 
             for (const mutation of mutations) {
                 if (mutation.type === 'childList') {
                     for (const node of mutation.addedNodes) {
-                        if (node.nodeType === 1) { // Element node
-                            // Check if it's a review or contains reviews
+                        if (node.nodeType === 1) {
                             const isReview = node.matches && (
                                 node.matches('[data-hook="review"]') ||
                                 node.matches('.review') ||
@@ -712,7 +705,7 @@
 
             if (shouldAnalyze && !analysisInProgress) {
                 console.log('TrustGuard: New reviews detected, re-analyzing...');
-                setTimeout(analyzeProduct, 1500); // Delay to let DOM settle
+                setTimeout(analyzeProduct, 1500);
             }
         });
 
@@ -721,7 +714,6 @@
             subtree: true
         });
 
-        // Handle URL changes (SPA navigation)
         let lastUrl = location.href;
         const urlObserver = new MutationObserver(() => {
             const url = location.href;
@@ -736,7 +728,6 @@
 
         urlObserver.observe(document, { subtree: true, childList: true });
 
-        // Initial analysis
         if (document.readyState === 'complete') {
             console.log('TrustGuard: Document ready, starting analysis');
             setTimeout(analyzeProduct, 1000);
@@ -746,33 +737,6 @@
                 setTimeout(analyzeProduct, 1000);
             });
         }
-    }
-
-    async function scrollForReviews() {
-        return new Promise((resolve) => {
-            const platform = getPlatform();
-            if (platform === 'amazon') {
-                // For Amazon, the "Top reviews" are usually enough for initial score,
-                // but we can try to scroll to the review section
-                const reviewHeader = document.querySelector('#reviews-medley-footer');
-                if (reviewHeader) {
-                    reviewHeader.scrollIntoView({ behavior: 'smooth' });
-                }
-            } else {
-                window.scrollTo({
-                    top: document.body.scrollHeight / 2,
-                    behavior: 'smooth'
-                });
-            }
-
-            setTimeout(() => {
-                window.scrollTo({
-                    top: document.body.scrollHeight,
-                    behavior: 'smooth'
-                });
-                setTimeout(resolve, 1500); // Wait for lazy load
-            }, 1000);
-        });
     }
 
     // Initialize

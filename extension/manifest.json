@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TrustGuard - Fake Review Detector",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "AI-powered fake review detection using Hybrid Trust Score Algorithm",
   "permissions": [
     "activeTab",
@@ -12,8 +12,6 @@
     "*://*.amazon.com/*",
     "*://*.amazon.in/*",
     "*://*.flipkart.com/*",
-    "*://play.google.com/*",
-    "*://*.myntra.com/*",
     "http://localhost:8000/*",
     "https://api.trustguard.io/*"
   ],
@@ -26,15 +24,15 @@
       "matches": [
         "*://*.amazon.com/*",
         "*://*.amazon.in/*",
-        "*://*.flipkart.com/*",
-        "*://play.google.com/*",
-        "*://*.myntra.com/*"
+        "*://*.flipkart.com/*"
       ],
       "js": [
-        "content.js"
+        "content.js",
+        "additional_detector.js"
       ],
       "css": [
-        "styles.css"
+        "styles.css",
+        "additional_detector.css"
       ],
       "run_at": "document_idle"
     }

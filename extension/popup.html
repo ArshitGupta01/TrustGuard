@@ -1,261 +1,237 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            width: 360px;
-            padding: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: white;
+            width: 380px;
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background: #090a10;
+            color: #ffffff;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
+        /* ── Dynamic Deep Space Background ── */
+        .bg-layer {
+            position: fixed; inset: -50%; z-index: 0; pointer-events: none;
+            background: 
+                radial-gradient(circle at 50% 0%, rgba(0, 210, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 100% 100%, rgba(102, 126, 234, 0.15) 0%, transparent 40%);
+            animation: slowRotate 15s linear infinite;
+        }
+        @keyframes slowRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Header ── */
         .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative; z-index: 1; text-align: center; padding: 32px 24px 24px;
+            background: linear-gradient(180deg, #10121f 0%, #090a10 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        .logo {
-            font-size: 36px;
-            margin-bottom: 5px;
-        }
+        /* ── Scrollbars ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #090a10; }
+        ::-webkit-scrollbar-thumb { background: #262940; border-radius: 3px; }
 
+        /* ── Glowing Logo ── */
+        .logo-wrap {
+            position: relative; display: inline-flex; align-items: center; justify-content: center;
+            width: 64px; height: 64px; margin-bottom: 16px; border-radius: 20px;
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            box-shadow: 0 10px 20px -5px rgba(0, 210, 255, 0.5), inset 0 2px 4px rgba(255,255,255,0.4);
+            z-index: 1; transition: transform 0.3s;
+        }
+        .logo-wrap:hover { transform: scale(1.05) rotate(5deg); }
+        .logo-icon { font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+
+        /* ── Typography ── */
         h1 {
-            margin: 0;
-            font-size: 22px;
-            font-weight: 600;
-            background: linear-gradient(90deg, #00d9ff, #00ff88);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 26px; font-weight: 900; letter-spacing: -0.5px;
+            background: linear-gradient(to right, #00d2ff, #fff);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+        .subtitle {
+            font-size: 11px; color: #a5a9c9; letter-spacing: 2px; text-transform: uppercase; font-weight: 700;
         }
 
-        .status {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 12px 0;
-            font-size: 14px;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 26px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.2);
-            transition: .3s;
-            border-radius: 26px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-
-        input:checked+.slider {
-            background-color: #00ff88;
-        }
-
-        input:checked+.slider:before {
-            transform: translateX(24px);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 15px 0;
-        }
-
-        .stat-box {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #00d9ff;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            opacity: 0.7;
-            margin-top: 5px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .action-btn {
-            background: linear-gradient(90deg, #00d9ff, #00ff88);
-            color: #1a1a2e;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin: 8px 0;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
-        }
-
-        .secondary-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .secondary-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: none;
-        }
-
-        #analysisStatus {
-            text-align: center;
-            margin: 10px 0;
-            font-size: 13px;
-            min-height: 20px;
-            font-weight: 500;
-        }
-
-        .footer {
-            margin-top: 15px;
-            text-align: center;
-            font-size: 11px;
-            opacity: 0.5;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
+        /* ── Connection Status ── */
         .connection-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            margin-top: 8px;
-            padding: 4px 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 20px;
+            display: inline-flex; align-items: center; gap: 8px; font-size: 11px; margin-top: 16px;
+            padding: 6px 14px; background: #141724; border-radius: 12px; font-weight: 700; color: #d0d3e8;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.05), 0 4px 10px rgba(0,0,0,0.4);
         }
-
         .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #00ff88;
-            animation: pulse 2s infinite;
+            width: 8px; height: 8px; border-radius: 50%; background: #00ff88;
+            box-shadow: 0 0 12px #00ff88; animation: pulseGlowing 2s infinite alternate;
+        }
+        .status-dot.offline { background: #ff4757; box-shadow: 0 0 12px #ff4757; animation: none; }
+        @keyframes pulseGlowing { 0% { opacity: 0.6; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1.1); box-shadow: 0 0 20px #00ff88; } }
+
+        /* ── Content Area ── */
+        .content { position: relative; z-index: 1; padding: 24px 20px; }
+
+        /* ── Elevated Solid Cards ── */
+        .settings-card {
+            background: #141724; padding: 8px 20px; border-radius: 16px; margin-bottom: 24px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .toggle-container {
+            display: flex; align-items: center; justify-content: space-between; padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .toggle-container:last-child { border-bottom: none; }
+        .toggle-label { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 600; color: #e2e4f0; }
+
+        /* Animated Switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; inset: 0; background: #262940; border-radius: 24px; transition: 0.3s;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
+            background-color: #fff; border-radius: 50%; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+        input:checked + .slider { background: linear-gradient(90deg, #00d2ff, #3a7bd5); box-shadow: 0 0 12px rgba(0, 210, 255, 0.4); }
+        input:checked + .slider:before { transform: translateX(20px); box-shadow: 0 0 10px #fff; }
+
+        /* ── Dynamic Stats Grid ── */
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .stat-box {
+            background: #141724; padding: 20px 14px; border-radius: 16px; text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.03); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden;
+        }
+        .stat-box::after {
+            content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+        }
+        .stat-box:hover { transform: translateY(-4px); box-shadow: 0 16px 30px rgba(0,0,0,0.6); }
+        .stat-box:hover::after { opacity: 1; }
+        
+        .stat-box:first-child .stat-icon { color: #00d2ff; text-shadow: 0 0 15px rgba(0, 210, 255, 0.5); }
+        .stat-box:last-child .stat-icon { color: #ff4757; text-shadow: 0 0 15px rgba(255, 71, 87, 0.5); }
+        
+        .stat-icon { font-size: 26px; margin-bottom: 12px; display: block; }
+        .stat-value {
+            font-size: 36px; font-weight: 900; letter-spacing: -1px; line-height: 1; margin-bottom: 6px;
+        }
+        .stat-box:first-child .stat-value { color: #ffffff; }
+        .stat-box:last-child .stat-value { color: #ffffff; }
+        .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #a5a9c9; font-weight: 800; }
+
+        /* ── Ultra Action Button ── */
+        .action-btn {
+            position: relative; background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            color: #ffffff; border: none; padding: 18px 20px; border-radius: 14px;
+            font-weight: 800; cursor: pointer; width: 100%; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 16px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 1.5px;
+            box-shadow: 0 10px 25px -5px rgba(0, 210, 255, 0.5), inset 0 2px 4px rgba(255,255,255,0.3);
+            overflow: hidden;
+        }
+        .action-btn::after {
+            content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: translateX(-100%); transition: 0s;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px); box-shadow: 0 15px 35px -5px rgba(0, 210, 255, 0.7), inset 0 2px 4px rgba(255,255,255,0.4);
+        }
+        .action-btn:hover::after { transform: translateX(100%); transition: 0.6s ease-in-out; }
+        .action-btn:active { transform: translateY(1px); box-shadow: 0 5px 15px -5px rgba(0, 210, 255, 0.4); }
+        .action-btn.loading {
+            pointer-events: none; background: #262940; color: #a5a9c9; box-shadow: none; border: 1px solid rgba(255,255,255,0.05);
         }
 
-        @keyframes pulse {
+        #analysisStatus { text-align: center; margin: 16px 0 4px; font-size: 13px; min-height: 18px; font-weight: 600; color: #a5a9c9; }
 
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+        /* ── Footer ── */
+        .footer { margin-top: 24px; text-align: center; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .ai-badge {
+            display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+            padding: 8px 16px; border-radius: 20px; background: #141724; color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 8px 15px rgba(0,0,0,0.4);
         }
+        .ai-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #667eea; box-shadow: 0 0 12px #667eea;
+            animation: pulseGlowing 2s infinite alternate;
+        }
+        .version-text { display: block; font-size: 10px; color: #646882; margin-top: 14px; letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }
     </style>
 </head>
-
 <body>
+    <div class="bg-layer"></div>
     <div class="header">
-        <div class="logo">🛡️</div>
+        <div class="logo-wrap">
+            <span class="logo-icon">🛡️</span>
+        </div>
         <h1>TrustGuard</h1>
-        <div class="connection-status">
-            <span class="status-dot"></span>
-            <span>Ready to analyze</span>
+        <div class="subtitle">AI-Powered Assessment</div>
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Checking backend...</span>
         </div>
     </div>
 
-    <div class="status">
-        <div class="toggle-container">
-            <span>Enable Analysis</span>
-            <label class="switch">
-                <input type="checkbox" id="enableToggle" checked>
-                <span class="slider"></span>
-            </label>
+    <div class="content">
+        <div class="settings-card">
+            <div class="toggle-container">
+                <span class="toggle-label">
+                    <span class="toggle-emoji">⚡</span>
+                    Auto Analysis
+                </span>
+                <label class="switch">
+                    <input type="checkbox" id="enableToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="toggle-container">
+                <span class="toggle-label">
+                    <span class="toggle-emoji">👁️</span>
+                    Overlay UI
+                </span>
+                <label class="switch">
+                    <input type="checkbox" id="showToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
-        <div class="toggle-container">
-            <span>Show on Page</span>
-            <label class="switch">
-                <input type="checkbox" id="showToggle" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>
 
-    <div class="stats">
-        <div class="stat-box">
-            <div class="stat-value" id="analyzedCount">0</div>
-            <div class="stat-label">Products Analyzed</div>
+        <div class="stats">
+            <div class="stat-box">
+                <span class="stat-icon">🔍</span>
+                <div class="stat-value" id="analyzedCount">0</div>
+                <div class="stat-label">Analyzed</div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-icon">🚩</span>
+                <div class="stat-value" id="flaggedCount">0</div>
+                <div class="stat-label">Flagged</div>
+            </div>
         </div>
-        <div class="stat-box">
-            <div class="stat-value" id="flaggedCount">0</div>
-            <div class="stat-label">Flags Raised</div>
+
+        <button class="action-btn" id="analyzeBtn">Analyze Page</button>
+        <div id="analysisStatus"></div>
+
+        <div class="footer">
+            <div class="ai-badge" id="aiBadge">
+                <span class="ai-dot"></span>
+                <span id="aiStatusText">AI Model Active</span>
+            </div>
+            <span class="version-text">v2.5 · Deep Space Engine</span>
         </div>
-    </div>
-
-    <button class="action-btn" id="analyzeBtn">🔍 Analyze This Page</button>
-    <div id="analysisStatus"></div>
-    <div id="qwenSummary" style="margin-top: 10px; font-size: 12px; line-height: 1.4; color: #cfffcf;"></div>
-
-    <div class="footer">
-        v1.1.0 • Privacy-First • Local Processing
     </div>
 
     <script src="popup.js"></script>
 </body>
-
 </html>
