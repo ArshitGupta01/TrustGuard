@@ -51,8 +51,7 @@ Verify that the backend and AI engine are communicating correctly:
 
 1.  Open **Chrome** and go to `chrome://extensions/`.
 2.  Enable **Developer mode** (top-right).
-3.  Click **Load unpacked** and select the **active extension folder** at:
-    `C:\Users\MOHIT\Desktop\trustguar_new_version\trustguard_new\extension`
+3.  Click **Load unpacked** and select the **`extension/` folder** from this repository.
 4.  Navigate to an **Amazon** or **Flipkart** product page.
 5.  Look for the **TrustGuard Badge** and **Qwen AI Analysis** boxes injected below the product title.
 
