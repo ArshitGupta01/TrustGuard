@@ -1,7 +1,7 @@
 // TrustGuard Service Worker (Manifest V3)
 // CRITICAL: All API calls MUST go through here, not content scripts
 
-const API_ENDPOINT = 'http://localhost:8000/analyze';
+const API_ENDPOINT = 'http://127.0.0.1:8000/analyze';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // Keep service worker alive
@@ -140,7 +140,7 @@ chrome.webRequest?.onHeadersReceived?.addListener(
         return { responseHeaders: headers };
     },
     {
-        urls: ["http://localhost:8000/*"]
+        urls: ["http://localhost:8000/*", "http://127.0.0.1:8000/*"]
     },
     ["responseHeaders", "extraHeaders"]
 );
