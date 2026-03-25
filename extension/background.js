@@ -38,7 +38,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.action === 'evaluate_reviews_ai') {
-        fetch('http://localhost:8000/analyze_reviews_batch', {
+        fetch('http://127.0.0.1:8000/analyze_reviews_batch', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

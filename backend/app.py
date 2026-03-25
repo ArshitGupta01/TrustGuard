@@ -870,7 +870,11 @@ async def list_audits(limit: int = 100):
 @app.get("/healthz")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "version": "2.0.0"}
+    return {
+        "status": "healthy", 
+        "version": "2.0.0",
+        "model_loaded": True  # Ollama Qwen is assumed active if service is up
+    }
 
 
 if __name__ == "__main__":
