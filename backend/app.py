@@ -6,8 +6,7 @@ import os
 import logging
 import traceback
 from dotenv import load_dotenv
-
-load_dotenv()  # Load environment variables from .env file
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -868,6 +867,7 @@ async def list_audits(limit: int = 100):
 
 
 @app.get("/health")
+@app.get("/healthz")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "version": "2.0.0"}

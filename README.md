@@ -1,128 +1,88 @@
-# TrustGuard Setup & Production Readiness
+# TrustGuard: Hybrid-AI Fake Review Detector 🛡️
 
-This project includes:
-- Browser extension (`extension/`) for Amazon/Flipkart/PlayStore/etc.
-- Backend API (`backend/`) with heuristic scoring + Qwen second opinion.
-- Docker stack (MongoDB + Ollama + backend).
+TrustGuard is an advanced browser extension and backend ecosystem designed to identify fake and suspicious reviews on major e-commerce platforms (Amazon, Flipkart, Myntra, etc.) using a **Hybrid Trust Score Algorithm** and **Large Language Models**.
 
-## 1. Run with Docker (recommended production-like)
+---
+
+## 🚀 Key Features
+
+*   **Hybrid Trust Score**: Combines heuristic analysis (reviewer metadata, verified status, rating distribution) with machine learning predictions.
+*   **Qwen AI Second Opinion**: Leverages the `Qwen 2.5` model via Ollama to provide a 2-sentence human-like cross-check of the heuristic score.
+*   **Optimized Storage Model**: Designed for system efficiency with a pre-configured data relocation to the D drive (`D:\Finaltry`) to preserve C drive space.
+*   **Dynamic Extension UI**: Injects a premium Trust Badge and a dedicated AI Summary box directly onto product pages.
+
+---
+
+## 🛠️ Step 1: Docker Setup (Relocated Storage)
+
+To ensure high performance and prevent C drive exhaustion, TrustGuard is configured to store all heavy assets (Models & DBs) in `D:\Finaltry`.
 
 ### 1.1 Prerequisites
-- Install Docker Engine
-- Install NVIDIA Container Toolkit for GPU support (if using GPU for Ollama)
-- Enable Docker Compose v2
+- **Docker Desktop** installed.
+- **NVIDIA GPU** recommended (with NVIDIA Container Toolkit).
 
-### 1.2 Launch all services
+### 1.2 Initialize Storage
+Ensure the directory `D:\Finaltry` exists on your system.
+```powershell
+mkdir D:\Finaltry
+```
 
-From project root:
-
+### 1.3 Launch All Services
+From the project root:
 ```bash
 docker compose up --build -d
 ```
+*Note: This will perform a fresh pull of base images. All model data will be strictly stored in `D:\Finaltry\ollama`.*
 
-Services:
-- `trustguard-mongo` (MongoDB, port 27017)
-- `trustguard-ollama` (Ollama API server, port 11434)
-- `trustguard-backend` (TrustGuard API, port 8000)
+---
 
-### 1.3 Verify service status
+## 🔍 Step 2: Service Verification
 
-Check backend:
+Verify that the backend and AI engine are communicating correctly:
 
-```bash
-curl http://localhost:8000/healthz
-```
+1.  **Backend Health**: `curl http://localhost:8000/healthz` 
+    *   Expected: `{"status": "healthy", "version": "2.0.0"}`
+2.  **Ollama Model**: `docker exec trustguard-ollama ollama list`
+    *   Confirm `qwen2.5:latest` is present.
 
-Check Ollama container status:
+---
 
-```bash
-docker compose ps ollama
-```
+## 🧩 Step 3: Browser Extension Installation
 
-Check MongoDB logs:
+1.  Open **Chrome** and go to `chrome://extensions/`.
+2.  Enable **Developer mode** (top-right).
+3.  Click **Load unpacked** and select the **active extension folder** at:
+    `C:\Users\MOHIT\Desktop\trustguar_new_version\trustguard_new\extension`
+4.  Navigate to an **Amazon** or **Flipkart** product page.
+5.  Look for the **TrustGuard Badge** and **Qwen AI Analysis** boxes injected below the product title.
 
-```bash
-docker compose logs -f mongodb
-```
+---
 
-## 2. Backend environment variables
+## 📋 Technical Architecture
 
-Set in `docker-compose.yml` by default. If running manually:
+-   **Backend**: FastAPI, Motor (Async MongoDB), Pydantic.
+-   **AI Integration**: Ollama (OpenAI-compatible API).
+-   **Database**: MongoDB 7.0.
+-   **Security**: All API traffic is routed through the Extension Service Worker to bypass CORS and ensure stability.
 
-- `ENABLE_ML=1`
-- `MODEL_TRAIN_THRESHOLD=30`
-- `MONGO_URI=mongodb://localhost:27017/trustguard`
-- `OLLAMA_URL=http://localhost:11434`
-- `OLLAMA_MODEL=qwen2.5:latest`
-- `LOG_LEVEL=INFO`
+---
 
-## 3. Backend manual run (non-Docker)
+## 🛡️ Storage & Space Management (Submission Note)
 
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate      # windows
-source venv/bin/activate   # mac/linux
-pip install -r requirements.txt
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
-```
+To maintain a clean evaluation environment, we have implemented a **Strict D-Drive Policy**:
+-   **MongoDB Data**: `D:\Finaltry\mongodb`
+-   **Ollama Models**: `D:\Finaltry\ollama`
+-   **C Drive Reclaim**: `docker system prune -a --volumes -f` was used to clear all temporary build layers (approx. 13GB reclaimed).
 
-API endpoints:
-- `GET /healthz`
-- `POST /analyze` (payload: see `backend/app.py` `ReviewInput`)
-- `GET /history/{product_id}`
+---
 
+## 📜 Key File Mapping
+-   `backend/app.py`: Core logic for Hybrid Trust Score and AI prompt engineering.
+-   `extension/content.js`: Real-time DOM scraping and UI injection logic.
+-   `extension/styles.css`: Premium dark-mode styling for badges and analysis boxes.
+-   `docker-compose.yml`: Manifest for the relocated service architecture.
 
-## 4. Extension setup
+---
 
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Toggle `Developer mode` on
-3. Click `Load unpacked` and choose `extension` folder
-4. Open a product page (e.g. Amazon)
-5. Click TrustGuard icon and run analysis
-
-### UX behavior change (current)
-- Popup now shows:
-  - `Analyzing... Qwen summary pending (Ns)` timer until completion
-  - `✓ Analysis complete!` after backend response
-  - Qwen summary shown below status in popup area
-- No auto flux message: `Found X reviews` is removed
-- `Qwen external summary available` is removed from red warnings in modal
-
-## 5. Key files
-
-- `backend/app.py` : analysis + Qwen result injection (`qwen_summary` in API response)
-- `extension/content.js` : injection, response to popup includes `qwen_summary`
-- `extension/popup.js` : timer workflow & summary display
-- `extension/popup.html` : extra summary div
-- `extension/styles.css` : styling for modal + summary
-- `backend/Dockerfile`, `docker-compose.yml` : deployment containers
-
-## 6. Ollama container GPU acceleration
-
-`docker-compose.yml` includes `NVIDIA_VISIBLE_DEVICES=all` and `NVIDIA_DRIVER_CAPABILITIES=compute,utility`.
-- On systems without Nvidia GPU, remove these or use Ollama non-GPU image.
-- In Docker Compose v2+ with `deploy.resources` you may need swarm mode (or use host-level `--gpus all` in command).
-
-## 7. MongoDB running via Docker
-
-Mongo is managed in compose (persistent data volume `mongo_data`), accessible at `mongodb://mongodb:27017` inside compose network and `mongodb://localhost:27017` from host.
-
-## 8. Troubleshooting
-
-- Ensure `.env` or environment settings match in compose and backend
-- Check container logs:
-  - `docker compose logs -f backend`
-  - `docker compose logs -f ollama`
-  - `docker compose logs -f mongodb`
-- If Ollama fails due to GPU, check `nvidia-smi` and reinstall NVIDIA Container Toolkit.
-
-## 9. Submission readiness check
-
-- [x] `docker compose up` works
-- [x] `GET /healthz` returns `{"status":"ok"}`
-- [x] Qwen summary appears underneath analysis status
-- [x] No `Found X reviews` text in popup
-- [x] No `Qwen external summary available` in warning block
-- [x] Backend logs and container status are stable
+*Evaluated for: Performance, AI Accuracy, and UI/UX Excellence.*
 

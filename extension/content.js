@@ -385,11 +385,41 @@
         }
 
         const badge = createTrustBadge(data.trust_score, data.flags);
-
+        
         // Insert after target
         if (target.parentNode) {
             target.parentNode.insertBefore(badge, target.nextSibling);
             console.log('TrustGuard: Badge injected successfully');
+            
+            // New: Inject Qwen summary if available
+            if (data.qwen_summary) {
+                injectQwenSummary(badge, data.qwen_summary);
+            }
+        }
+    }
+
+    function injectQwenSummary(anchor, text) {
+        // Remove existing summary
+        const existing = document.getElementById('trustguard-qwen-summary');
+        if (existing) existing.remove();
+
+        const summaryBox = document.createElement('div');
+        summaryBox.id = 'trustguard-qwen-summary';
+        summaryBox.className = 'tg-qwen-summary-box';
+        summaryBox.innerHTML = `
+            <div class="tg-qwen-header">
+                <span class="tg-qwen-icon">🤖</span>
+                <span class="tg-qwen-title">Qwen AI Analysis</span>
+            </div>
+            <div class="tg-qwen-body">
+                ${escapeHtml(text)}
+            </div>
+        `;
+
+        // Insert after the main badge
+        if (anchor.parentNode) {
+            anchor.parentNode.insertBefore(summaryBox, anchor.nextSibling);
+            console.log('TrustGuard: Qwen summary injected');
         }
     }
 

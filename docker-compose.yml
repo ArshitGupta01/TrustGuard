@@ -7,7 +7,7 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongo_data:/data/db
+      - D:\Finaltry\mongodb:/data/db
 
   ollama:
     image: ollama/ollama:latest
@@ -25,8 +25,9 @@ services:
     environment:
       - OLLAMA_MODEL=qwen2.5:latest
       - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    command: ["ollama", "serve", "--host", "0.0.0.0"]
+    volumes:
+      - D:\Finaltry\ollama:/root/.ollama
+# No command needed as entrypoint handles it
 
   backend:
     build:
@@ -39,7 +40,8 @@ services:
     environment:
       - ENABLE_ML=1
       - MODEL_TRAIN_THRESHOLD=30
-      - MONGO_URI=mongodb://mongodb:27017/trustguard
+      - MONGODB_URI=mongodb://mongodb:27017/trustguard
+      - MONGODB_DB=trustguard
       - OLLAMA_URL=http://ollama:11434
       - OLLAMA_MODEL=qwen2.5:latest
       - LOG_LEVEL=INFO
