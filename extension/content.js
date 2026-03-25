@@ -71,13 +71,13 @@
             asinFromData: '[data-asin]'
         },
         flipkart: {
-            reviewContainer: ['._27M-vq', '.col-12-12._1c0LF1', '._1AtVbE', '._2wzgFH'],
-            reviewText: ['.t-ZTKy div div', '._12cXul', '._2-N8zT'],
-            rating: ['._3LWZlK', 'div[class*="3LWZlK"]'],
-            reviewerName: ['._2sc7ZR'],
-            verifiedPurchase: ['._2V5EHH', '._2mcZGG'],
-            reviewDate: ['._2sc7ZR._2V5EHH', '._3n8db9'],
-            productTitle: ['.B_NuCI', '.product-title'],
+            reviewContainer: ['._27M-vq', '.col-12-12._1c0LF1', '._1AtVbE', '._2wzgFH', 'div[class*="css-175oi2r"][style*="border-bottom"]', 'div[class*="css-146c3p1"]'],
+            reviewText: ['.t-ZTKy div div', '._12cXul', '._2-N8zT', 'div[class*="css-146c3p1"]', '.ZBlf_N'],
+            rating: ['._3LWZlK', 'div[class*="3LWZlK"]', 'div[class*="css-146c3p1"]'],
+            reviewerName: ['._2sc7ZR', 'div[class*="css-146c3p1"]'],
+            verifiedPurchase: ['._2V5EHH', '._2mcZGG', 'div[class*="css-g5y9jx"]'],
+            reviewDate: ['._2sc7ZR._2V5EHH', '._3n8db9', 'div[class*="css-146c3p1"]'],
+            productTitle: ['.B_NuCI', '.product-title', 'h1[class*="css-146c3p1"]'],
             asinFromUrl: /[?&]pid=([A-Za-z0-9_-]+)/i
         },
         playstore: {
@@ -273,11 +273,39 @@
                 const helpfulEl = getElement(container, s.helpfulVotes);
 
                 const text = textEl ? textEl.innerText.trim() : '';
-                if (!text || text.length < 10) return; // Skip empty/short reviews
+                
+                // If text is not found by selector, try finding the largest text block in container
+                let finalText = text;
+                if (!finalText || finalText.length < 10) {
+                    const candidateDivs = Array.from(container.querySelectorAll('div, p, span'));
+                    candidateDivs.sort((a, b) => (b.innerText?.length || 0) - (a.innerText?.length || 0));
+                    for (const div of candidateDivs) {
+                        const content = div.innerText?.trim();
+                        if (content && content.length > 20 && !content.includes('\n')) {
+                            finalText = content;
+                            break;
+                        }
+                    }
+                }
+
+                if (!finalText || finalText.length < 10) return; // Skip empty/short reviews
+
+                // Smarter rating extraction for dynamic layouts
+                let finalRating = parseRating(ratingEl, platform);
+                if (!ratingEl && platform === 'flipkart') {
+                    const ratingMatch = container.innerText.match(/([1-5])\s*(★|out of 5)/);
+                    if (ratingMatch) finalRating = parseFloat(ratingMatch[1]);
+                    else {
+                        // Look for a div that solely contains a digit 1-5
+                        const smallDivs = Array.from(container.querySelectorAll('div'));
+                        const digitDiv = smallDivs.find(d => /^[1-5](\.0)?$/.test(d.innerText.trim()));
+                        if (digitDiv) finalRating = parseFloat(digitDiv.innerText.trim());
+                    }
+                }
 
                 reviews.push({
-                    text: text,
-                    rating: parseRating(ratingEl, platform),
+                    text: finalText,
+                    rating: finalRating,
                     verified: !!verifiedEl || (container.innerText.includes("Verified Purchase")),
                     timestamp: parseDate(dateEl ? dateEl.innerText : ''),
                     reviewer_id: hashString(nameEl ? nameEl.innerText : `unknown_${index}`),
