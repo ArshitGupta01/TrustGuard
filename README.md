@@ -8,7 +8,7 @@ TrustGuard is an advanced browser ecosystem designed to identify fake and suspic
 
 *   **Hybrid Trust Score**: Combines heuristic analysis (reviewer metadata, verified status, raring distribution) with machine learning predictions.
 *   **Qwen AI Second Opinion**: Leverages the `Qwen 2.5` model via Ollama to provide a human-like cross-check of the heuristic score.
-*   **Configurable Storage**: Optimized for efficiency with configurable data relocation to any drive or path to preserve system space.
+*   **Configurable Storage**: Optimized for efficiency with configurable data relocation to docker exec trustguard-ollama ollama run qwen2.5:latest "Your prompt here"any drive or path to preserve system space.
 *   **Real-time Analysis Timer**: Live feedback during deep AI scanning (30-40s).
 
 ---
