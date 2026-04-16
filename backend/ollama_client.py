@@ -28,7 +28,7 @@ def _query_qwen_sync(prompt: str, max_tokens: int, temperature: float) -> Option
             }
         }
         url = f"{OLLAMA_URL}/api/generate"
-        resp = requests.post(url, json=payload, timeout=45)
+        resp = requests.post(url, json=payload, timeout=30)  # Reduced from 45 to 30 seconds
         resp.raise_for_status()
         data = resp.json()
 
