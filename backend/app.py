@@ -779,15 +779,14 @@ async def analyze_product(data: ReviewInput):
 
         # ollama Qwen analysis (summarization + second opinion)
         try:
-            summary_prompt = (
-                "Analyze these reviews and provide:\n"
-                "1. SUMMARY: One sentence summarizing what the reviews say overall\n"
-                "2. ANALYSIS: 2-sentence assessment of any suspicious patterns\n\n"
+            analysis_prompt = (
+                "Analyze these reviews and provide a 2-sentence assessment of any suspicious patterns only. "
+                "Do not include a general summary.\n\n"
                 "Reviews:\n" +
                 "\n".join([f"- [{r.get('rating', '?')}] {r.get('text','')[:120]}" for r in data.reviews[:10]])
             )
             # Use await for the refactored async query_qwen
-            qwen_text = await query_qwen(summary_prompt, max_tokens=200, temperature=0.25)
+            qwen_text = await query_qwen(analysis_prompt, max_tokens=200, temperature=0.25)
             
             if qwen_text:
                 result.qwen_summary = qwen_text

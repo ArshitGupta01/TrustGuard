@@ -28,11 +28,11 @@ def _query_qwen_sync(prompt: str, max_tokens: int, temperature: float) -> Option
             }
         }
         url = f"{OLLAMA_URL}/api/generate"
-        resp = requests.post(url, json=payload, timeout=15)  # Allow enough time for model generation
+        resp = requests.post(url, json=payload, timeout=5)  # Keep request timeout at 10 seconds
         resp.raise_for_status()
         data = resp.json()
 
-        return data.get("response")
+        return data.get("response") 
 
     except Exception as exc:
         return f"OLLAMA error: {exc}"
