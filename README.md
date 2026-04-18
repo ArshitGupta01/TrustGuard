@@ -1,4 +1,4 @@
-# TrustGuard — Fake Review Detector for Amazon & Flipkart
+# TrustGuard — Fake Review Detector 
 
 A Chrome extension + local backend that scores product reviews for trustworthiness using heuristic analysis and a local LLM (Qwen 2.5). It scrapes reviews directly from the page, runs them through four different analyzers, gets a second opinion from an AI model running on your machine, and shows you a trust badge right on the product page.
 
@@ -21,7 +21,7 @@ TrustGuard takes a different approach. It runs entirely on your machine, uses mu
 
 ## What it actually does
 
-When you visit a product page on Amazon or Flipkart, TrustGuard:
+When you visit a product page on Amazon or Flipkart, etc TrustGuard:
 
 1. **Scrapes all visible reviews** from the page (text, ratings, dates, verified status, helpful votes)
 2. **Sends them to a local FastAPI backend** (runs with or without Docker)
